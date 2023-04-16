@@ -5,11 +5,13 @@ addon.desc      = "Keeps track of any debuff applied to mobs."
 addon.link      = "https://github.com/mug0n/afflicted"
 
 require("common")
+local chat = require("chat")
 local imgui = require("imgui")
 local packets = require("packets")
 
 local Afflicted = {}
 Afflicted.hWnd = "Afflicted"
+Afflicted.debugMode = false
 Afflicted.fixedWidth = 240
 Afflicted.mobs = {}
 
@@ -69,10 +71,10 @@ Afflicted.effects = {
 
 -- list of spells that trigger the effects we want to track
 Afflicted.spells = {
-    [23]  = { duration =  60, effect = {Afflicted.effects.DIA},            name = "Dia", },
+    [23]  = { duration =  60, effect = Afflicted.effects.DIA,            name = "Dia", },
     [24]  = { duration = 120, effect = Afflicted.effects.DIA,            name = "Dia II",               removes = T{ 23, 33, 230 } },
     [25]  = { duration = 180, effect = Afflicted.effects.DIA,            name = "Dia III",              removes = T{ 23, 24, 33, 230, 231 } },
-    [33]  = { duration =  60, effect = Afflicted.effects.DIA,            name = "Diaga", },
+    [33]  = { duration =  60, effect = Afflicted.effects.DIA,            name = "Diaga",                removes = T{ 23 }},
     [56]  = { duration = 180, effect = Afflicted.effects.SLOW,           name = "Slow", },
     [58]  = { duration = 120, effect = Afflicted.effects.PARALYSIS,      name = "Paralyze", },
     [59]  = { duration = 120, effect = Afflicted.effects.SILENCE,        name = "Silence", },
@@ -190,9 +192,7 @@ Afflicted.applyEffect = function (self, target_id, spell_id)
     for _, v in pairs(self.mobs[target_id]) do
         -- cannot overwrite itself or is blocked by another
         local blocked_by = spell.blocked_by or T{}
-        blocked_by:append(spell_id)
-
-        if (blocked_by:contains(v.id)) then return end
+        if (spell_id == v.spell_id or blocked_by:contains(v.spell_id)) then return end
     end
 
     -- remove any other spell this one overwrites (spell.removes)
@@ -201,7 +201,7 @@ Afflicted.applyEffect = function (self, target_id, spell_id)
         local remove = Afflicted.spells[remove_id]
         local current = self.mobs[target_id][remove.effect]
 
-        if (current ~= nil and removes:contains(current.id)) then
+        if (current ~= nil and removes:contains(current.spell_id)) then
             self:removeEffect(target_id, remove.effect)
         end
     end
@@ -209,19 +209,15 @@ Afflicted.applyEffect = function (self, target_id, spell_id)
     -- apply effect(s) -- spell.effect may or may not be a table
     local effects = type(spell.effect) == "table" and spell.effect or { spell.effect }
     for _, effect_id in pairs(effects) do
-        self.mobs[target_id][effect_id] = { id = spell_id, expiration = os.time() + spell.duration }
+        self.mobs[target_id][effect_id] = { spell_id = spell_id, expiration = os.time() + spell.duration }
     end
 end
 
 Afflicted.removeEffect = function(self, target_id, effect)
-    -- remove and cleanup target if empty
+    -- remove effect from target table
     local target = self.mobs[target_id]
     if (target ~= nil) then
         target[effect] = nil
-
-        if (target:empty()) then
-            self:removeTarget(target_id)
-        end
     end
 end
 
@@ -247,8 +243,47 @@ ashita.events.register("load", "afflicted_load", function ()
                 Afflicted.spells[rv].blocked_by = T{}
             end
 
-            Afflicted.spells[rv].blocked_by:append(k)
+            if not (Afflicted.spells[rv].blocked_by:contains(k)) then
+                Afflicted.spells[rv].blocked_by:append(k)
+            end
         end
+    end
+end)
+
+
+--[[
+    event: command
+    desc : Event called when the addon is processing a command.
+--]]
+ashita.events.register("command", "afflicted_command", function (e)
+    -- parse the command arguments
+    local args = e.command:args()
+    if (#args == 0 or not args[1]:any("/afflicted")) then
+        return
+    end
+
+    -- block propagation
+    e.blocked = true
+
+    -- print header
+    local header = chat.header(addon.name) - 1
+
+    -- defaulting to list
+    local param = "list"
+    if (#args > 1) then param = args[2] end
+
+    if (param == "list") then
+        print(header .. " Listing tracked debuffs")
+        for k, v in pairs(Afflicted.mobs) do
+            print(header .. string.format(" For mob %s:", k))
+            for vk, vv in pairs(v) do
+                local spell = Afflicted.spells[vv.spell_id]
+                print(header .. string.format(" spell=%s expiration=%s", spell.name, vv.expiration))
+            end
+        end
+    elseif (param == "debug") then
+        Afflicted.debugMode = not Afflicted.debugMode
+        print(header .. string.format(" Debug mode: %s.", ( Afflicted.debugMode and "ON" or "OFF" )))
     end
 end)
 
@@ -260,7 +295,7 @@ end)
 ashita.events.register("d3d_present", "afflicted_present", function ()
     -- get target information
     local entity = GetEntity(AshitaCore:GetMemoryManager():GetTarget():GetTargetIndex(0))
-    if entity == nil or entity.Type ~= 2 or entity.ClaimStatus == 0 or entity.SpawnFlags ~= 16 then
+    if entity == nil or entity.Type ~= 2 or entity.SpawnFlags ~= 16 then
         return
     end
 
@@ -296,7 +331,7 @@ ashita.events.register("d3d_present", "afflicted_present", function ()
                 local remaining = debuff.expiration - os.time()
                 if (remaining >= 0) then
                     -- spell name and remaining time as progress bar 
-                    local spell = Afflicted.spells[debuff.id]
+                    local spell = Afflicted.spells[debuff.spell_id]
                     imgui.Text(spell.name)
                     imgui.NextColumn()
                     imgui.ProgressBar(remaining / spell.duration, { -1, 14 }, string.format("%ss", remaining))
@@ -332,9 +367,17 @@ ashita.events.register("packet_in", "afflicted_packet_in", function (e)
             for _, target in pairs(packet.targets) do
                 local action = target.actions[1]
 
+                -- debug mode
+                if (Afflicted.debugMode) then
+                    local header = chat.header(addon.name) - 1
+                    print(header .. string.format(" target=%s action=%s param=%s", target.id, action.message, packet.param))
+                end
+
                 -- 2 and 252 are damaging spells
                 -- 236, 237, 268, 271 are non damaging spells
-                if (action ~= nil and T{ 2, 236, 237, 252, 268, 271 }:contains(action.message)) then
+                -- 264 is damaging spells such as Diaga for targets caught in the aoe (2 on target and 264 on other mobs caught in aoe)
+                -- 277 is non damaging spells such as Sleepga for targets caught in aoe spells (271 on target and 277 on mobs caught in aoe)
+                if (action ~= nil and T{ 2, 236, 237, 252, 264, 268, 271, 277 }:contains(action.message)) then
                     -- try to apply the effect
                     Afflicted:applyEffect(target.id, packet.param)
                 end
