@@ -29,8 +29,6 @@ Afflicted.effects = {
     BIND            =  11,
     WEIGHT          =  12,
     SLOW            =  13,
-    SLEEP_II        =  19,
-    CURSE_II        =  20,
     ADDLE           =  21,
     INTIMIDATE      =  22,
     TERROR          =  28,
@@ -80,7 +78,7 @@ Afflicted.spells = {
     [59]  = { duration = 120, effect = Afflicted.effects.SILENCE,        name = "Silence", },
     [79]  = { duration = 180, effect = Afflicted.effects.SLOW,           name = "Slow II", },
     [80]  = { duration = 120, effect = Afflicted.effects.PARALYSIS,      name = "Paralyze II", },
-    [98]  = { duration =  90, effect = Afflicted.effects.SLEEP_II,       name = "Repose",               removes = T{ 253, 273, 376, 463 } },
+    [98]  = { duration =  90, effect = Afflicted.effects.SLEEP,          name = "Repose",               removes = T{ 253, 273, 376, 463 } },
     [112] = { duration =  12, effect = Afflicted.effects.FLASH,          name = "Flash", },
     [216] = { duration = 120, effect = Afflicted.effects.WEIGHT,         name = "Gravity", },
     [217] = { duration = 120, effect = Afflicted.effects.WEIGHT,         name = "Gravity II", },
@@ -102,9 +100,9 @@ Afflicted.spells = {
     [254] = { duration = 180, effect = Afflicted.effects.BLINDNESS,      name = "Blind", },
     [255] = { duration =  30, effect = Afflicted.effects.PETRIFICATION,  name = "Break", },
     [258] = { duration =  60, effect = Afflicted.effects.BIND,           name = "Bind", },
-    [259] = { duration =  90, effect = Afflicted.effects.SLEEP_II,       name = "Sleep II",             removes = T{ 253, 273, 376, 463 } },
+    [259] = { duration =  90, effect = Afflicted.effects.SLEEP,          name = "Sleep II",             removes = T{ 253, 273, 376, 463 } },
     [273] = { duration =  60, effect = Afflicted.effects.SLEEP,          name = "Sleepga", },
-    [274] = { duration =  90, effect = Afflicted.effects.SLEEP_II,       name = "Sleepga II",           removes = T{ 253, 273, 376, 463 } },
+    [274] = { duration =  90, effect = Afflicted.effects.SLEEP,          name = "Sleepga II",           removes = T{ 253, 273, 376, 463 } },
     [276] = { duration = 180, effect = Afflicted.effects.BLINDNESS,      name = "Blind II", },
     [286] = { duration = 180, effect = Afflicted.effects.ADDLE,          name = "Addle", },
     [319] = { duration = 120, effect = Afflicted.effects.ATTACK_DOWN,    name = "Aisha: Ichi", },
@@ -394,6 +392,12 @@ ashita.events.register("packet_in", "afflicted_packet_in", function (e)
         message.target_id = struct.unpack("I", e.data_modified, 0x09)
         message.param_1 = struct.unpack("I", e.data_modified, 0x0D)
         message.message_id = struct.unpack("H", e.data_modified, 0x19) % 32768
+
+        -- debug mode
+        if (Afflicted.debugMode) then
+            local header = chat.header(addon.name) - 1
+            print(header .. string.format("target=%s action=%s param=%s", message.target_id, message.message_id, message.param_1))
+        end
 
         if (T{ 6, 20, 113, 406, 605, 646 }:contains(message.message_id)) then
             -- target died
