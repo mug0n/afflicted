@@ -281,6 +281,10 @@ ashita.events.register("command", "afflicted_command", function (e)
                 print(header .. string.format(" spell=%s expiration=%s", spell.name, vv.expiration))
             end
         end
+    elseif (param == "info") then
+        -- get target info
+        local entity = GetEntity(AshitaCore:GetMemoryManager():GetTarget():GetTargetIndex(0))
+        print(header .. string.format(" Entity information: type=%s spawnFlags=%s", entity.Type, entity.SpawnFlags))
     elseif (param == "debug") then
         Afflicted.debugMode = not Afflicted.debugMode
         print(header .. string.format(" Debug mode: %s.", ( Afflicted.debugMode and "ON" or "OFF" )))
@@ -295,7 +299,7 @@ end)
 ashita.events.register("d3d_present", "afflicted_present", function ()
     -- get target information
     local entity = GetEntity(AshitaCore:GetMemoryManager():GetTarget():GetTargetIndex(0))
-    if entity == nil or entity.Type ~= 2 or entity.SpawnFlags ~= 16 then
+    if entity == nil or ( entity.Type ~= 2 and entity.Type ~= 6 ) or entity.SpawnFlags ~= 16 then
         return
     end
 
