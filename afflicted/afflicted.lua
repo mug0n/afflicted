@@ -119,7 +119,7 @@ Afflicted.spells = {
     [372] = { duration = 128, effect = Afflicted.effects.REQUIEM,        name = "Foe Requiem V",        removes = T{ 368, 369, 370, 371 } },
     [373] = { duration = 144, effect = Afflicted.effects.REQUIEM,        name = "Foe Requiem VI",       removes = T{ 368, 369, 370, 371, 372 } },
     [374] = { duration = 160, effect = Afflicted.effects.REQUIEM,        name = "Foe Requiem VII",      removes = T{ 368, 369, 370, 371, 372, 373 } },
-    [376] = { duration =  30, effect = Afflicted.effects.SLEEP,          name = "Foe Lullaby", },
+    [376] = { duration =  30, effect = Afflicted.effects.SLEEP,          name = "Horde Lullaby", },
     [421] = { duration = 120, effect = Afflicted.effects.ELEGY,          name = "Battlefield Elegy", },
     [422] = { duration = 180, effect = Afflicted.effects.ELEGY,          name = "Carnage Elegy",        removes = T{ 421 } },
     [423] = { duration = 240, effect = Afflicted.effects.ELEGY,          name = "Massacre Elegy",       removes = T{ 421, 422 } },
@@ -131,7 +131,7 @@ Afflicted.spells = {
     [459] = { duration =  60, effect = Afflicted.effects.THRENODY,       name = "Water Threnody",       removes = T{ 454, 455, 456, 457, 458, 460, 461 } },
     [460] = { duration =  60, effect = Afflicted.effects.THRENODY,       name = "Light Threnody",       removes = T{ 454, 455, 456, 457, 458, 459, 461 } },
     [461] = { duration =  60, effect = Afflicted.effects.THRENODY,       name = "Dark Threnody",        removes = T{ 454, 455, 456, 457, 458, 459, 460 } },
-    [463] = { duration =  30, effect = Afflicted.effects.SLEEP,          name = "Horde Lullaby", },
+    [463] = { duration =  30, effect = Afflicted.effects.SLEEP,          name = "Foe Lullaby", },
     [513] = { duration = 180, effect = Afflicted.effects.POISON,         name = "Venom Shell", },
     [524] = { duration =  60, effect = Afflicted.effects.ACCURACY_DOWN,  name = "Sandspin", },
     [531] = { duration =   5, effect = Afflicted.effects.BIND,           name = "Ice Break", },
@@ -295,8 +295,12 @@ end)
 --]]
 ashita.events.register("d3d_present", "afflicted_present", function ()
     -- get target information
-    local entity = GetEntity(AshitaCore:GetMemoryManager():GetTarget():GetTargetIndex(0))
-    if entity == nil or ( entity.Type ~= 2 and entity.Type ~= 6 ) or entity.SpawnFlags ~= 16 then
+    local memMgr = AshitaCore:GetMemoryManager()
+    local entMgr = memMgr:GetEntity()
+    local targetMgr = memMgr:GetTarget()
+    local targetIndex = targetMgr:GetTargetIndex(targetMgr:GetIsSubTargetActive())
+
+    if (bit.band(entMgr:GetSpawnFlags(targetIndex), 0x10) == 0) then
         return
     end
 
@@ -312,6 +316,8 @@ ashita.events.register("d3d_present", "afflicted_present", function ()
             ImGuiWindowFlags_NoNav ))
     ) then
         -- caption text
+        local entity = GetEntity(targetIndex)
+
         imgui.TextColored({ 0.508, 0.712, 0.832, 1.0 }, entity.Name)
         imgui.SameLine()
 
@@ -331,7 +337,7 @@ ashita.events.register("d3d_present", "afflicted_present", function ()
                 -- check if debuff has expired
                 local remaining = debuff.expiration - os.time()
                 if (remaining >= 0) then
-                    -- spell name and remaining time as progress bar 
+                    -- spell name and remaining time as progress bar
                     local spell = Afflicted.spells[debuff.spell_id]
                     imgui.Text(spell.name)
                     imgui.NextColumn()
@@ -377,8 +383,8 @@ ashita.events.register("packet_in", "afflicted_packet_in", function (e)
                 -- 2 and 252 are damaging spells
                 -- 236, 237, 268, 271 are non damaging spells
                 -- 264 is damaging spells such as Diaga for targets caught in the aoe (2 on target and 264 on other mobs caught in aoe)
-                -- 277 is non damaging spells such as Sleepga for targets caught in aoe spells (271 on target and 277 on mobs caught in aoe)
-                if (action ~= nil and T{ 2, 236, 237, 252, 264, 268, 271, 277 }:contains(action.message)) then
+                -- 277 is non damaging spells such as Sleepga for targets caught in aoe spells (237 and 271 on target, 277 and 278 on mobs caught in aoe)
+                if (action ~= nil and T{ 2, 236, 237, 252, 264, 268, 271, 277, 278 }:contains(action.message)) then
                     -- try to apply the effect
                     Afflicted:applyEffect(target.id, packet.param)
                 end
