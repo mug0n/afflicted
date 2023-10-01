@@ -1,6 +1,6 @@
 addon.name      = "Afflicted"
 addon.author    = "mug0n"
-addon.version   = "1.0"
+addon.version   = "1.0.3"
 addon.desc      = "Keeps track of any debuff applied to mobs."
 addon.link      = "https://github.com/mug0n/afflicted"
 
@@ -88,12 +88,12 @@ Afflicted.spells = {
     [230] = { duration =  60, effect = Afflicted.effects.BIO,            name = "Bio",                  removes = T{ 23, 33 } },
     [231] = { duration = 120, effect = Afflicted.effects.BIO,            name = "Bio II",               removes = T{ 23, 24, 33, 230 } },
     [232] = { duration = 180, effect = Afflicted.effects.BIO,            name = "Bio III",              removes = T{ 23, 24, 25, 33, 230, 231 } },
-    [235] = { duration =  90, effect = Afflicted.effects.BURN,           name = "Burn",                 removes = T{ 236 } },
-    [236] = { duration =  90, effect = Afflicted.effects.FROST,          name = "Frost",                removes = T{ 237 } },
-    [237] = { duration =  90, effect = Afflicted.effects.CHOKE,          name = "Choke",                removes = T{ 238 } },
-    [238] = { duration =  90, effect = Afflicted.effects.RASP,           name = "Rasp",                 removes = T{ 239 } },
-    [239] = { duration =  90, effect = Afflicted.effects.SHOCK,          name = "Shock",                removes = T{ 240 } },
-    [240] = { duration =  90, effect = Afflicted.effects.DROWN,          name = "Drown",                removes = T{ 235 } },
+    [235] = { duration = 120, effect = Afflicted.effects.BURN,           name = "Burn",                 removes = T{ 236 } },
+    [236] = { duration = 120, effect = Afflicted.effects.FROST,          name = "Frost",                removes = T{ 237 } },
+    [237] = { duration = 120, effect = Afflicted.effects.CHOKE,          name = "Choke",                removes = T{ 238 } },
+    [238] = { duration = 120, effect = Afflicted.effects.RASP,           name = "Rasp",                 removes = T{ 239 } },
+    [239] = { duration = 120, effect = Afflicted.effects.SHOCK,          name = "Shock",                removes = T{ 240 } },
+    [240] = { duration = 120, effect = Afflicted.effects.DROWN,          name = "Drown",                removes = T{ 235 } },
     [252] = { duration =   5, effect = Afflicted.effects.STUN,           name = "Stun", },
     [253] = { duration =  60, effect = Afflicted.effects.SLEEP,          name = "Sleep", },
     [254] = { duration = 180, effect = Afflicted.effects.BLINDNESS,      name = "Blind", },
@@ -170,7 +170,7 @@ Afflicted.spells = {
     [879] = { duration = 300, effect = Afflicted.effects.INUNDATION,     name = "Inundation", },
 }
 
-Afflicted.reset = function(self)
+Afflicted.reset = function (self)
     self.mobs = {}
 end
 
